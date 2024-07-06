@@ -6,7 +6,7 @@ namespace ICMPv6DotNet.Payloads
 {
     public class ICMPErrorPayload : ICMPV6Payload
     {
-        public ICMPErrorPayload(Memory<byte> buffer, ICMPType type, byte code) : base(buffer)
+        public ICMPErrorPayload(Memory<byte> buffer, ICMPType type, byte code) : base()
         {
             if (type == ICMPType.PacketTooBig)
             {
@@ -17,6 +17,8 @@ namespace ICMPv6DotNet.Payloads
                 Pointer = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(0, 4).Span);
             }
             Reason = (ErrorReason)(((int)type << 8) + code);
+            if (buffer.Length > 4)
+                Message = Encoding.ASCII.GetString(buffer.Slice(4).Span);
         }
 
         public override int WritePacket(Span<byte> buffer)
@@ -39,11 +41,12 @@ namespace ICMPv6DotNet.Payloads
 
         public override string ToString()
         {
-            return $"Reason: {Reason}, MTU: {MTU}, Packet: {Encoding.ASCII.GetString(buffer.Slice(4).Span)}";
+            return $"Reason: {Reason}, MTU: {MTU}, Packet: {Message}";
         }
 
         public uint? MTU { get; private set; }
         public uint? Pointer { get; private set; }
+        public string? Message { get; private set; }
         public ErrorReason Reason { get; private set; }
     }
 }

@@ -54,14 +54,13 @@ namespace ICMPv6DotNet
             buffer[0] = (byte)type;
             buffer[1] = code;
             if (payload != null)
-                size += payload.WritePacket(buffer);
+                size += payload.WritePacket(buffer.Slice(4));
             else
             {
-                for (int i = 4; i < 8; i++)
-                    buffer[i] = 0;
+                buffer.Slice(4, 4).Clear();
                 size += 4;
             }
-            BinaryPrimitives.WriteUInt16BigEndian(buffer.Slice(2, 2), GetChecksum(buffer));
+            BinaryPrimitives.WriteUInt16BigEndian(buffer.Slice(2, 2), GetChecksum(buffer.Slice(0, size)));
             return size;
         }
 

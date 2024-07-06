@@ -5,13 +5,6 @@ namespace ICMPv6DotNet.Payloads
 {
     public abstract class ICMPV6Payload
     {
-        protected Memory<byte> buffer;
-
-        internal ICMPV6Payload(Memory<byte> buffer)
-        {
-            this.buffer = buffer;
-        }
-
         internal static ICMPV6Payload? Create(Memory<byte> buffer, ICMPType type, byte code)
         {
             switch (type)
@@ -23,7 +16,7 @@ namespace ICMPv6DotNet.Payloads
                     return new ICMPErrorPayload(buffer, type, code);
                 case ICMPType.EchoReply:
                 case ICMPType.EchoRequest:
-                    return new ICMPBinaryPayload(buffer);
+                    return new ICMPEchoPayload(buffer);
                 case ICMPType.NeighborAdvertisement:
                 case ICMPType.NeighborSolicitation:
                 case ICMPType.RouterAdvertisement:

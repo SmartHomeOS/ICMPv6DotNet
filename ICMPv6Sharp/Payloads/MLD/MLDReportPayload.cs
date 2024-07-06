@@ -8,7 +8,7 @@ namespace ICMPv6DotNet.Payloads.MLD
         protected readonly bool valid = true;
         protected readonly List<MulticastGroupRecordV3> groups;
 
-        public MLDReportPayload(Memory<byte> buffer, ICMPType type) : base(buffer)
+        public MLDReportPayload(Memory<byte> buffer, ICMPType type) : base()
         {
             if (buffer.Length < 8)
             {
@@ -38,7 +38,7 @@ namespace ICMPv6DotNet.Payloads.MLD
             {
                 len += group.WritePacket(buffer);
             }
-            return this.buffer.Length;
+            return len;
         }
 
         public override string ToString()

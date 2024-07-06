@@ -11,13 +11,13 @@ namespace ICMPv6DotNet.Payloads.NDP
         readonly List<NDPOption> options = [];
         readonly ICMPType type;
 
-        public NDPPayload(Memory<byte> buffer, ICMPType type) : base(buffer)
+        public NDPPayload(Memory<byte> buffer, ICMPType type) : base()
         {
             this.type = type;
             switch (type)
             {
                 case ICMPType.RouterSolicitation:
-                    ParseOptions(4);
+                    ParseOptions(4, buffer);
                     break;
                 case ICMPType.RouterAdvertisement:
                     if (buffer.Length < 12)
@@ -31,7 +31,7 @@ namespace ICMPv6DotNet.Payloads.NDP
                     RouterLifetime = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2).Span);
                     ReachableTime = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(4).Span);
                     RetransTime = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(8).Span);
-                    ParseOptions(12);
+                    ParseOptions(12, buffer);
                     break;
                 case ICMPType.NeighborSolicitation:
                 case ICMPType.NeighborAdvertisement:
@@ -47,7 +47,7 @@ namespace ICMPv6DotNet.Payloads.NDP
                         Solicited = (buffer.Span[0] & 0x40) == 0x40;
                         Override = (buffer.Span[0] & 0x20) == 0x20;
                     }
-                    ParseOptions(20);
+                    ParseOptions(20, buffer);
                     break;
                 case ICMPType.RedirectMessage:
                     if (buffer.Length < 36)
@@ -57,7 +57,7 @@ namespace ICMPv6DotNet.Payloads.NDP
                     }
                     TargetAddress = new IPAddress(buffer.Slice(4, 16).Span);
                     DestinationAddress = new IPAddress(buffer.Slice(20, 16).Span);
-                    ParseOptions(36);
+                    ParseOptions(36, buffer);
                     break;
             }
         }
@@ -107,8 +107,9 @@ namespace ICMPv6DotNet.Payloads.NDP
             }
         }
 
-        private void ParseOptions(int start)
+        private void ParseOptions(int start, Memory<byte> buffer)
         {
+            //TODO - Rewrite this to use spans instead of start/len
             if (start >= buffer.Length)
                 return;
             int len = buffer.Span[start + 1] * 8;
@@ -150,7 +151,7 @@ namespace ICMPv6DotNet.Payloads.NDP
                 return;
             }
             if (start < buffer.Length)
-                ParseOptions(start);
+                ParseOptions(start, buffer);
         }
 
         private int WriteOptions(Span<byte> buffer)

@@ -5,7 +5,7 @@ namespace ICMPv6DotNet.Payloads
     public class MulticastRouterAdvertisement : ICMPV6Payload
     {
         readonly bool valid = true;
-        public MulticastRouterAdvertisement(Memory<byte> buffer, byte code) : base(buffer)
+        public MulticastRouterAdvertisement(Memory<byte> buffer, byte code) : base()
         {
             if (buffer.Length < 4)
             {
