@@ -1,4 +1,4 @@
-﻿namespace ICMPv6DotNet.Packets.MLD
+﻿namespace ICMPv6DotNet.Payloads.MLD
 {
     public enum MLDGroupRecordType
     {

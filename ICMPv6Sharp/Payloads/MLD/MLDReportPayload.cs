@@ -1,9 +1,7 @@
-﻿using ICMPv6DotNet.Packets.MLD;
-using ICMPv6DotNet.Packets.NDPOptions;
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Text;
 
-namespace ICMPv6DotNet.Packets.MLD
+namespace ICMPv6DotNet.Payloads.MLD
 {
     public class MLDReportPayload : ICMPV6Payload
     {
@@ -18,9 +16,9 @@ namespace ICMPv6DotNet.Packets.MLD
                 groups = new List<MulticastGroupRecordV3>();
                 return;
             }
-            ushort count = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(6).Span);
+            ushort count = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2).Span);
             groups = new List<MulticastGroupRecordV3>(count);
-            int start = 8;
+            int start = 4;
             try
             {
                 for (int i = 0; i < count; i++)
@@ -30,6 +28,17 @@ namespace ICMPv6DotNet.Packets.MLD
             {
                 valid = false;
             }
+        }
+
+        public override int WritePacket(Span<byte> buffer)
+        {
+            int len = 4;
+            BinaryPrimitives.WriteUInt16BigEndian(buffer.Slice(2, 2), (ushort)groups.Count);
+            foreach (MulticastGroupRecordV3 group in groups)
+            {
+                len += group.WritePacket(buffer);
+            }
+            return this.buffer.Length;
         }
 
         public override string ToString()

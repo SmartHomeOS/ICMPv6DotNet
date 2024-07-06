@@ -1,1 +1,10 @@
 # ICMPv6DotNet
+
+A C# implementation of the ICMPv6 protocol (WIP)
+
+Implemented RFCS:
+* RFC 4443 (ICMPv6 Spec)
+* RFC 2710 (Multicast Listener Discovery) [Partial]
+* RFC 3810 (Multicast Listener Discovery Version 2) [Partial]
+* RFC 4861 (Neighbor Discovery)
+* RFC 4286 (Multicast Router Discovery)

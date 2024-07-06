@@ -1,7 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Net;
 
-namespace ICMPv6DotNet.Packets.MLD
+namespace ICMPv6DotNet.Payloads.MLD
 {
     public class MulticastGroupRecordV3
     {
@@ -27,6 +27,25 @@ namespace ICMPv6DotNet.Packets.MLD
                 start += 16;
             }
             start += auxLen;
+        }
+
+        public int WritePacket(Span<byte> buffer)
+        {
+            int len = 0;
+            buffer[len++] = (byte)RecordType;
+            buffer[len++] = 0; //Aux Data isn't defined yet
+            BinaryPrimitives.WriteUInt16BigEndian(buffer.Slice(len), (ushort)SourceAddresses.Length);
+            len += 2;
+            if (!MulticastAddress.TryWriteBytes(buffer.Slice(len), out _))
+                throw new InvalidDataException("Could not write multicast to buffer");
+            len += 16;
+            foreach (var source in SourceAddresses)
+            {
+                if (!source.TryWriteBytes(buffer.Slice(len), out _))
+                    throw new InvalidDataException("Could not write multicast to buffer");
+                len += 16;
+            }
+            return len;
         }
 
         public override string ToString()
