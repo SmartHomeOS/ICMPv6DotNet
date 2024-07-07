@@ -31,12 +31,12 @@ namespace ICMPv6DotNet.Net
             socket.JoinMulticast(ALL_MLDV2_ROUTERS);
         }
 
-        public async Task<HashSet<IPAddress>> GeneralQuery(int timeout = 10000)
+        public async Task<Dictionary<IPAddress, HashSet<IPAddress>>> GeneralQuery(int timeout = 10000)
         {
             CancellationTokenSource cts = new CancellationTokenSource(timeout);
-            ICMPPacket multicastQuery = MLDQueryPayload.CreateGeneralQuery(socket.ListenAddress, ALL_NODES, 30, 30, 0, false);
+            ICMPPacket multicastQuery = MLDPayload.CreateGeneralQuery(socket.ListenAddress, ALL_NODES, 30, 30, 0, false);
             await socket.SendAsync(multicastQuery, ALL_NODES, cts.Token);
-            HashSet<IPAddress> sources = new HashSet<IPAddress>();
+            Dictionary<IPAddress, HashSet<IPAddress>> sources = new Dictionary<IPAddress, HashSet<IPAddress>>();
             try
             {
                 while (!cts.IsCancellationRequested)
@@ -44,9 +44,19 @@ namespace ICMPv6DotNet.Net
                     ICMPPacket packet = await socket.ReceiveAsync(false, cts.Token);
                     if (packet.Type == ICMPType.MLDv2Report && (packet.Payload != null))
                     {
-                        foreach (var option in ((MLDReportPayload)packet.Payload).Groups)
-                            sources.UnionWith(option.SourceAddresses);
-                        sources.Add(packet.Source);
+                        foreach (var group in ((MLDV2ReportPayload)packet.Payload).Groups)
+                        {
+                            if (!sources.ContainsKey(group.MulticastAddress))
+                                sources.Add(group.MulticastAddress, new HashSet<IPAddress>());
+                            sources[group.MulticastAddress].Union(group.SourceAddresses);
+                            sources[group.MulticastAddress].Add(packet.Source);
+                        }
+                    }
+                    else if (packet.Type == ICMPType.MLDReport && (packet.Payload != null))
+                    {
+                        if (!sources.ContainsKey(((MLDPayload)packet.Payload).MulticastAddress))
+                            sources.Add(((MLDPayload)packet.Payload).MulticastAddress, new HashSet<IPAddress>());
+                        sources[((MLDPayload)packet.Payload).MulticastAddress].Add(packet.Source);
                     }
                 }
             }

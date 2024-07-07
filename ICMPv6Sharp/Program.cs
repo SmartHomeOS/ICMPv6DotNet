@@ -30,9 +30,13 @@ internal class Program
         Console.WriteLine("Running...");
         MulticastDiscovery md = new MulticastDiscovery(0, true);
         Console.WriteLine($"Querying network for all multicast listeners");
-        HashSet<IPAddress> addrs = await md.GeneralQuery(5000);
-        foreach (IPAddress ip in addrs)
-            Console.WriteLine($"Found {ip}");
+        Dictionary<IPAddress,HashSet<IPAddress>> addrs = await md.GeneralQuery(5000);
+        foreach (var kvp in addrs)
+        {
+            Console.WriteLine($"Address {kvp.Key}:");
+            foreach (var source in kvp.Value)
+                Console.WriteLine($"    Source: {source}");
+        }
         md.Stop();
         Console.WriteLine("Query Complete");
         Console.ReadLine();

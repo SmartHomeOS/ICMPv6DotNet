@@ -16,20 +16,28 @@ using System.Text;
 
 namespace ICMPv6DotNet.Payloads.MLD
 {
-    public class MLDQueryPayload : ICMPV6Payload
+    public class MLDPayload : ICMPV6Payload
     {
         protected readonly bool valid = true;
 
-        public MLDQueryPayload(Span<byte> buffer, ICMPType type) : base()
+        public MLDPayload(Span<byte> buffer) : base()
         {
-            if (buffer.Length < 24)
+            if (buffer.Length < 20)
             {
                 valid = false;
                 Sources = [];
                 MulticastAddress = IPAddress.None;
                 return;
             }
-            ushort maxResponse = BinaryPrimitives.ReadUInt16BigEndian(buffer);
+            MaxResponseDelay = BinaryPrimitives.ReadUInt16BigEndian(buffer);
+            MulticastAddress = new IPAddress(buffer.Slice(4, 16));
+            if (buffer.Length < 24)
+            {
+                Sources = [];
+                Version = 1;
+                return;
+            }
+            ushort maxResponse = (ushort)MaxResponseDelay;
             if (maxResponse <= short.MaxValue)
                 MaxResponseDelay = maxResponse;
             else
@@ -38,7 +46,6 @@ namespace ICMPv6DotNet.Payloads.MLD
                 int exp = (maxResponse & 0x7000) >> 12;
                 MaxResponseDelay = (uint)(mant << (exp + 3));
             }
-            MulticastAddress = new IPAddress(buffer.Slice(4, 16));
             Suppress = (buffer[20] & 0x8) == 0x8;
             Robustness = (byte)(buffer[20] & 0x7);
             if (buffer[21] <= sbyte.MaxValue)
@@ -59,9 +66,10 @@ namespace ICMPv6DotNet.Payloads.MLD
             {
                 valid = false;
             }
+            Version = 2;
         }
 
-        public MLDQueryPayload(uint maxResponseDelay, ushort queryInterval, byte robustness, bool suppress, IPAddress multicast, List<IPAddress> sources)
+        public MLDPayload(uint maxResponseDelay, ushort queryInterval, byte robustness, bool suppress, IPAddress multicast, List<IPAddress> sources)
         {
             MaxResponseDelay = maxResponseDelay;
             QueryInterval = queryInterval;
@@ -144,34 +152,37 @@ namespace ICMPv6DotNet.Payloads.MLD
             if (!valid)
                 return "Invalid MLD Query";
             StringBuilder str = new StringBuilder();
-            str.Append($"Multicast: {MulticastAddress}");
-            if (Suppress)
-                str.Append(" [S]");
-            str.Append($", QRV: {Robustness}, QQIC: {QueryInterval}, Sources: ");
-            for (int i = 0; i < Sources.Count; i++)
+            str.Append($"V{Version} Multicast: {MulticastAddress}");
+            if (Version > 1)
             {
-                if (i > 0)
-                    str.Append(", ");
-                str.Append(Sources[i]);
+                if (Suppress)
+                    str.Append(" [S]");
+                str.Append($", QRV: {Robustness}, QQIC: {QueryInterval}, Sources: ");
+                for (int i = 0; i < Sources.Count; i++)
+                {
+                    if (i > 0)
+                        str.Append(", ");
+                    str.Append(Sources[i]);
+                }
             }
             return str.ToString();
         }
 
         public static ICMPPacket CreateGeneralQuery(IPAddress source, IPAddress destination, uint maxResponseDelay, ushort queryInterval, byte robustness, bool suppress)
         {
-            MLDQueryPayload query = new MLDQueryPayload(maxResponseDelay, queryInterval, robustness, suppress, IPAddress.IPv6None, []);
+            MLDPayload query = new MLDPayload(maxResponseDelay, queryInterval, robustness, suppress, IPAddress.IPv6None, []);
             return new ICMPPacket(source, destination, ICMPType.MLDQuery, 0, query);
         }
 
         public static ICMPPacket CreateMulticastQuery(IPAddress source, IPAddress destination, IPAddress multicastAddress, uint maxResponseDelay, ushort queryInterval, byte robustness, bool suppress)
         {
-            MLDQueryPayload query = new MLDQueryPayload(maxResponseDelay, queryInterval, robustness, suppress, multicastAddress, []);
+            MLDPayload query = new MLDPayload(maxResponseDelay, queryInterval, robustness, suppress, multicastAddress, []);
             return new ICMPPacket(source, destination, ICMPType.MLDQuery, 0, query);
         }
 
         public static ICMPPacket CreateSourceQuery(IPAddress source, IPAddress destination, IPAddress multicastAddress, List<IPAddress> sources, uint maxResponseDelay, ushort queryInterval, byte robustness, bool suppress)
         {
-            MLDQueryPayload query = new MLDQueryPayload(maxResponseDelay, queryInterval, robustness, suppress, multicastAddress, sources);
+            MLDPayload query = new MLDPayload(maxResponseDelay, queryInterval, robustness, suppress, multicastAddress, sources);
             return new ICMPPacket(source, destination, ICMPType.MLDQuery, 0, query);
         }
 
@@ -181,5 +192,6 @@ namespace ICMPv6DotNet.Payloads.MLD
         public bool Suppress {  get; private set; }
         public byte Robustness{ get; private set; }
         public ushort QueryInterval { get; private set; }
+        public byte Version { get; private set; }
     }
 }

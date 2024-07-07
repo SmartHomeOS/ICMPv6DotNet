@@ -37,11 +37,12 @@ namespace ICMPv6DotNet.Payloads
                     return new NDPPayload(buffer, type);
                 case ICMPType.MulticastRouterAdvertisement:
                     return new MulticastRouterAdvertisement(buffer, code);
-                case ICMPType.MLDQuery: //V2 Query
-                    return new MLDQueryPayload(buffer, type);
+                case ICMPType.MLDQuery: //V1 & V2 Query
+                case ICMPType.MLDReport:
+                case ICMPType.MLDDone:
+                    return new MLDPayload(buffer);
                 case ICMPType.MLDv2Report:
-                    return new MLDReportPayload(buffer, type);
-                //MLD V1 - MLDQuery, MLDReport, MLDDone
+                    return new MLDV2ReportPayload(buffer);
                 case ICMPType.MulticastRouterSolicitation: //No Payload or Options
                 case ICMPType.MulticastRouterTermination:
                     return null;

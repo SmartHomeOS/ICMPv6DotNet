@@ -15,11 +15,11 @@ using System.Text;
 
 namespace ICMPv6DotNet.Payloads.MLD
 {
-    public class MLDReportPayload : ICMPV6Payload
+    public class MLDV2ReportPayload : ICMPV6Payload
     {
         protected readonly bool valid = true;
 
-        public MLDReportPayload(Span<byte> buffer, ICMPType type) : base()
+        public MLDV2ReportPayload(Span<byte> buffer) : base()
         {
             if (buffer.Length < 8)
             {
