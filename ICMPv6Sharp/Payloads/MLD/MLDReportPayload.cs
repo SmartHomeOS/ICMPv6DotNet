@@ -18,23 +18,22 @@ namespace ICMPv6DotNet.Payloads.MLD
     public class MLDReportPayload : ICMPV6Payload
     {
         protected readonly bool valid = true;
-        protected readonly List<MulticastGroupRecordV3> groups;
 
-        public MLDReportPayload(Memory<byte> buffer, ICMPType type) : base()
+        public MLDReportPayload(Span<byte> buffer, ICMPType type) : base()
         {
             if (buffer.Length < 8)
             {
                 valid = false;
-                groups = new List<MulticastGroupRecordV3>();
+                Groups = [];
                 return;
             }
-            ushort count = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2).Span);
-            groups = new List<MulticastGroupRecordV3>(count);
+            ushort count = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2));
+            Groups = new List<MulticastGroupRecordV3>(count);
             int start = 4;
             try
             {
                 for (int i = 0; i < count; i++)
-                    groups.Add(new MulticastGroupRecordV3(buffer, ref start));
+                    Groups.Add(new MulticastGroupRecordV3(buffer, ref start));
             }
             catch (InvalidDataException)
             {
@@ -45,29 +44,33 @@ namespace ICMPv6DotNet.Payloads.MLD
         public override int WritePacket(Span<byte> buffer)
         {
             int len = 4;
-            BinaryPrimitives.WriteUInt16BigEndian(buffer.Slice(2, 2), (ushort)groups.Count);
-            foreach (MulticastGroupRecordV3 group in groups)
+            BinaryPrimitives.WriteUInt16BigEndian(buffer.Slice(2, 2), (ushort)Groups.Count);
+            foreach (MulticastGroupRecordV3 group in Groups)
             {
                 len += group.WritePacket(buffer);
             }
             return len;
         }
 
+        public override bool IsValid => valid;
+
         public override string ToString()
         {
-            if (groups.Count == 0)
+            if (Groups.Count == 0)
                 return string.Empty;
             if (!valid)
                 return "Invalid MLD Report";
             StringBuilder str = new StringBuilder();
             str.Append("Multicast Groups: ");
-            for (int i = 0; i < groups.Count; i++)
+            for (int i = 0; i < Groups.Count; i++)
             {
                 if (i > 0)
                     str.Append(", ");
-                str.Append($"[{groups[i]}]");
+                str.Append($"[{Groups[i]}]");
             }
             return str.ToString();
         }
+
+        public List<MulticastGroupRecordV3> Groups;
     }
 }

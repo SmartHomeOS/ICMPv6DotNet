@@ -23,10 +23,10 @@ namespace ICMPv6DotNet.Net
         private Memory<byte> buffer;
         IPAddress listenAddress;
 
-        public ICMPv6Socket(IPAddress listenAddress, bool listenAll)
+        public ICMPv6Socket(IPAddress listenAddress, bool listenAll, short hopLimit = 255)
         {
             socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Raw, ProtocolType.IcmpV6);
-            socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastTimeToLive, (short)255);
+            socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastTimeToLive, hopLimit);
             socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.PacketInformation, true);
             socket.Bind(new IPEndPoint(listenAddress, 0));
             buffer = new byte[65535];
@@ -37,6 +37,12 @@ namespace ICMPv6DotNet.Net
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                     socket.IOControl(IOControlCode.ReceiveAll, BitConverter.GetBytes(3), null);
             }
+        }
+
+        public void JoinMulticast(IPAddress group)
+        {
+            IPv6MulticastOption mcast = new IPv6MulticastOption(group);
+            socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.AddMembership, mcast);
         }
 
 
@@ -67,10 +73,10 @@ namespace ICMPv6DotNet.Net
             return null;
         }
 
-        public async Task SendAsync(ICMPPacket packet, IPAddress destination)
+        public async Task SendAsync(ICMPPacket packet, IPAddress destination, CancellationToken token = default)
         {
             int len = packet.WritePacket(buffer.Span);
-            await socket.SendToAsync(buffer.Slice(0, len), new IPEndPoint(destination, 0));
+            await socket.SendToAsync(buffer.Slice(0, len), new IPEndPoint(destination, 0), token);
         }
 
         public void Send(ICMPPacket packet, IPAddress destination)

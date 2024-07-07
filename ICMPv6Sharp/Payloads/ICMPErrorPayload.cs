@@ -18,19 +18,19 @@ namespace ICMPv6DotNet.Payloads
 {
     public class ICMPErrorPayload : ICMPV6Payload
     {
-        public ICMPErrorPayload(Memory<byte> buffer, ICMPType type, byte code) : base()
+        public ICMPErrorPayload(Span<byte> buffer, ICMPType type, byte code) : base()
         {
             if (type == ICMPType.PacketTooBig)
             {
-                MTU = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(0, 4).Span);
+                MTU = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(0, 4));
             }
             else if (type == ICMPType.ParameterProblem)
             {
-                Pointer = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(0, 4).Span);
+                Pointer = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(0, 4));
             }
             Reason = (ErrorReason)(((int)type << 8) + code);
             if (buffer.Length > 4)
-                Message = Encoding.UTF8.GetString(buffer.Slice(4).Span);
+                Message = Encoding.UTF8.GetString(buffer.Slice(4));
         }
 
         protected ICMPErrorPayload(ErrorReason reason, string? message = null, uint? mtu = null, uint? pointer = null)

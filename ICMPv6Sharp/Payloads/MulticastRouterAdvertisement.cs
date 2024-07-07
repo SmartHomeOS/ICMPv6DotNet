@@ -17,7 +17,7 @@ namespace ICMPv6DotNet.Payloads
     public class MulticastRouterAdvertisement : ICMPV6Payload
     {
         readonly bool valid = true;
-        public MulticastRouterAdvertisement(Memory<byte> buffer, byte code) : base()
+        public MulticastRouterAdvertisement(Span<byte> buffer, byte code) : base()
         {
             if (buffer.Length < 4)
             {
@@ -25,8 +25,8 @@ namespace ICMPv6DotNet.Payloads
                 return;
             }
             AdvertisementInterval = code;
-            QueryInterval = BinaryPrimitives.ReadUInt16BigEndian(buffer.Span);
-            Robustness = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2, 2).Span);
+            QueryInterval = BinaryPrimitives.ReadUInt16BigEndian(buffer);
+            Robustness = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2, 2));
         }
 
         public override int WritePacket(Span<byte> buffer)

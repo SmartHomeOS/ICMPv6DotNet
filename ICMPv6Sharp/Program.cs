@@ -22,7 +22,20 @@ internal class Program
     private static async Task Main(string[] args)
     {
         IPAddress dest = IPAddress.Parse("fe80::7654:3210:fe75:4578");
-        await NDExample(dest);
+        await MLDExample();
+    }
+
+    private static async Task MLDExample()
+    {
+        Console.WriteLine("Running...");
+        MulticastDiscovery md = new MulticastDiscovery(0, true);
+        Console.WriteLine($"Querying network for all multicast listeners");
+        HashSet<IPAddress> addrs = await md.GeneralQuery(5000);
+        foreach (IPAddress ip in addrs)
+            Console.WriteLine($"Found {ip}");
+        md.Stop();
+        Console.WriteLine("Query Complete");
+        Console.ReadLine();
     }
 
     private static async Task NDExample(IPAddress dest)

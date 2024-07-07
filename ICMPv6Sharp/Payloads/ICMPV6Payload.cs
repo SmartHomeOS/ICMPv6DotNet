@@ -17,7 +17,7 @@ namespace ICMPv6DotNet.Payloads
 {
     public abstract class ICMPV6Payload
     {
-        internal static ICMPV6Payload? Create(Memory<byte> buffer, ICMPType type, byte code)
+        internal static ICMPV6Payload? Create(Span<byte> buffer, ICMPType type, byte code)
         {
             switch (type)
             {
@@ -37,9 +37,8 @@ namespace ICMPv6DotNet.Payloads
                     return new NDPPayload(buffer, type);
                 case ICMPType.MulticastRouterAdvertisement:
                     return new MulticastRouterAdvertisement(buffer, code);
-                case ICMPType.MLDQuery:
-                    //TODO - This is the V2 query
-                    return null;
+                case ICMPType.MLDQuery: //V2 Query
+                    return new MLDQueryPayload(buffer, type);
                 case ICMPType.MLDv2Report:
                     return new MLDReportPayload(buffer, type);
                 //MLD V1 - MLDQuery, MLDReport, MLDDone

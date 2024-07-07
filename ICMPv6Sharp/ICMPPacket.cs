@@ -140,7 +140,7 @@ namespace ICMPv6DotNet
                 if (!IsValid)
                     return null;
                 if (payload == null && payloadBytes != null)
-                    payload = ICMPV6Payload.Create((Memory<byte>)payloadBytes, Type, code);
+                    payload = ICMPV6Payload.Create(((Memory<byte>)payloadBytes).Span, Type, code);
                 if (payload == null || !payload.IsValid)
                     return null;
                 return payload;

@@ -18,10 +18,10 @@ namespace ICMPv6DotNet.Payloads
 {
     public class ICMPEchoPayload : ICMPV6Payload
     {
-        public ICMPEchoPayload(Memory<byte> buffer) : base()
+        public ICMPEchoPayload(Span<byte> buffer) : base()
         {
-            Identifier = BinaryPrimitives.ReadUInt16BigEndian(buffer.Span);
-            SequenceNumber = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2, 2).Span);
+            Identifier = BinaryPrimitives.ReadUInt16BigEndian(buffer);
+            SequenceNumber = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2, 2));
             if (buffer.Length > 4)
                 Data = buffer.Slice(4).ToArray();
             else

@@ -24,13 +24,13 @@ namespace ICMPv6DotNet.Payloads.NDP
         readonly List<NDPOption> options = [];
         readonly ICMPType type;
 
-        public NDPPayload(Memory<byte> buffer, ICMPType type) : base()
+        public NDPPayload(Span<byte> buffer, ICMPType type) : base()
         {
             this.type = type;
             switch (type)
             {
                 case ICMPType.RouterSolicitation:
-                    ParseOptions(buffer.Slice(4).Span);
+                    ParseOptions(buffer.Slice(4));
                     break;
                 case ICMPType.RouterAdvertisement:
                     if (buffer.Length < 12)
@@ -38,13 +38,13 @@ namespace ICMPv6DotNet.Payloads.NDP
                         valid = false;
                         return;
                     }
-                    CurrentHopLimit = buffer.Span[0];
-                    ManagedAddressConfiguration = (buffer.Span[1] & 0x80) == 0x80;
-                    OtherConfiguration = (buffer.Span[1] & 0x40) == 0x40;
-                    RouterLifetime = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2).Span);
-                    ReachableTime = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(4).Span);
-                    RetransTime = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(8).Span);
-                    ParseOptions(buffer.Slice(12).Span);
+                    CurrentHopLimit = buffer[0];
+                    ManagedAddressConfiguration = (buffer[1] & 0x80) == 0x80;
+                    OtherConfiguration = (buffer[1] & 0x40) == 0x40;
+                    RouterLifetime = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2));
+                    ReachableTime = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(4));
+                    RetransTime = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(8));
+                    ParseOptions(buffer.Slice(12));
                     break;
                 case ICMPType.NeighborSolicitation:
                 case ICMPType.NeighborAdvertisement:
@@ -53,14 +53,14 @@ namespace ICMPv6DotNet.Payloads.NDP
                         valid = false;
                         return;
                     }
-                    TargetAddress = new IPAddress(buffer.Slice(4, 16).Span);
+                    TargetAddress = new IPAddress(buffer.Slice(4, 16));
                     if (type == ICMPType.NeighborAdvertisement)
                     {
-                        Router = (buffer.Span[0] & 0x80) == 0x80;
-                        Solicited = (buffer.Span[0] & 0x40) == 0x40;
-                        Override = (buffer.Span[0] & 0x20) == 0x20;
+                        Router = (buffer[0] & 0x80) == 0x80;
+                        Solicited = (buffer[0] & 0x40) == 0x40;
+                        Override = (buffer[0] & 0x20) == 0x20;
                     }
-                    ParseOptions(buffer.Slice(20).Span);
+                    ParseOptions(buffer.Slice(20));
                     break;
                 case ICMPType.RedirectMessage:
                     if (buffer.Length < 36)
@@ -68,9 +68,9 @@ namespace ICMPv6DotNet.Payloads.NDP
                         valid = false;
                         return;
                     }
-                    TargetAddress = new IPAddress(buffer.Slice(4, 16).Span);
-                    DestinationAddress = new IPAddress(buffer.Slice(20, 16).Span);
-                    ParseOptions(buffer.Slice(36).Span);
+                    TargetAddress = new IPAddress(buffer.Slice(4, 16));
+                    DestinationAddress = new IPAddress(buffer.Slice(20, 16));
+                    ParseOptions(buffer.Slice(36));
                     break;
             }
         }
