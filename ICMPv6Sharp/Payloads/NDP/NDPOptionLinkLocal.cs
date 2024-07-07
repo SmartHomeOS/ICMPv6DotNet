@@ -4,12 +4,18 @@ namespace ICMPv6DotNet.Payloads.NDP
 {
     public class NDPOptionLinkLocal : NDPOption
     {
-        public NDPOptionLinkLocal(Memory<byte> buffer, int start, int len, bool source)
+        public NDPOptionLinkLocal(Span<byte> buffer, bool source)
         {
             if (source)
-                SourceAddress = new PhysicalAddress(buffer.Slice(start + 2, len - 2).ToArray());
+                SourceAddress = new PhysicalAddress(buffer.Slice(2, buffer.Length - 2).ToArray());
             else
-                DestinationAddress = new PhysicalAddress(buffer.Slice(start + 2, len - 2).ToArray());
+                DestinationAddress = new PhysicalAddress(buffer.Slice(2, buffer.Length - 2).ToArray());
+        }
+
+        public NDPOptionLinkLocal(PhysicalAddress? source = null, PhysicalAddress? destination = null)
+        {
+            this.SourceAddress = source;
+            this.DestinationAddress = destination;
         }
 
         public override int WritePacket(Span<byte> buffer)

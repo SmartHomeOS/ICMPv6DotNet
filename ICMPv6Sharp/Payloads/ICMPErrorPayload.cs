@@ -1,5 +1,6 @@
 ﻿using ICMPv6DotNet.Payloads;
 using System.Buffers.Binary;
+using System.Net;
 using System.Text;
 
 namespace ICMPv6DotNet.Payloads
@@ -18,7 +19,15 @@ namespace ICMPv6DotNet.Payloads
             }
             Reason = (ErrorReason)(((int)type << 8) + code);
             if (buffer.Length > 4)
-                Message = Encoding.ASCII.GetString(buffer.Slice(4).Span);
+                Message = Encoding.UTF8.GetString(buffer.Slice(4).Span);
+        }
+
+        protected ICMPErrorPayload(ErrorReason reason, string? message = null, uint? mtu = null, uint? pointer = null)
+        {
+            this.Reason = reason;
+            this.MTU = mtu;
+            this.Pointer = pointer;
+            this.Message = message;
         }
 
         public override int WritePacket(Span<byte> buffer)
@@ -36,7 +45,18 @@ namespace ICMPv6DotNet.Payloads
                     throw new InvalidDataException("Pointer is missing");
                 BinaryPrimitives.WriteUInt32BigEndian(buffer, (uint)Pointer);
             }
+            if (Message != null)
+            {
+                Encoding.UTF8.GetBytes(Message).CopyTo(buffer.Slice(4));
+                return 4 + Message.Length;
+            }
             return 4;
+        }
+
+        public static ICMPPacket CreateError(IPAddress source, IPAddress destination, ErrorReason reason, string? message = null, uint? mtu = null, uint? pointer = null)
+        {
+            ICMPErrorPayload payload = new ICMPErrorPayload(reason, message, mtu, pointer);
+            return new ICMPPacket(source, destination, (ICMPType)((int)reason >> 8), (byte)((int)reason & 0xFF), payload);
         }
 
         public override string ToString()

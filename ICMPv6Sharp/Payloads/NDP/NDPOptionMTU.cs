@@ -4,9 +4,14 @@ namespace ICMPv6DotNet.Payloads.NDP
 {
     public class NDPOptionMTU : NDPOption
     {
-        public NDPOptionMTU(Memory<byte> buffer, int start)
+        public NDPOptionMTU(Span<byte> buffer)
         {
-            MTU = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(start + 4, 4).Span);
+            MTU = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(4, 4));
+        }
+
+        public NDPOptionMTU(uint mtu)
+        {
+            MTU = mtu;
         }
 
         public override string ToString()

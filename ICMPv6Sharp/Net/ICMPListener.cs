@@ -22,5 +22,10 @@ namespace ICMPv6DotNet.Net
         {
             return await socket.ReceiveAsync(true, token);
         }
+
+        public void Stop()
+        {
+            socket.Close();
+        }
     }
 }

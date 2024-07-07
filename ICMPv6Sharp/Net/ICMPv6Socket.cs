@@ -11,14 +11,15 @@ namespace ICMPv6DotNet.Net
         private Socket socket;
         private Memory<byte> buffer;
         IPAddress listenAddress;
-        bool listenAll;
+
         public ICMPv6Socket(IPAddress listenAddress, bool listenAll)
         {
             socket = new Socket(AddressFamily.InterNetworkV6, SocketType.Raw, ProtocolType.IcmpV6);
+            socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.MulticastTimeToLive, (short)255);
+            socket.SetSocketOption(SocketOptionLevel.IPv6, SocketOptionName.PacketInformation, true);
             socket.Bind(new IPEndPoint(listenAddress, 0));
             buffer = new byte[65535];
             this.listenAddress = listenAddress;
-            this.listenAll = listenAll;
 
             if (listenAll)
             {
@@ -44,6 +45,17 @@ namespace ICMPv6DotNet.Net
             throw new ArgumentException("Specified Network Interface does not contain IPv6 Addresses");
         }
 
+        public static PhysicalAddress? GetNicPhysicalAddress(IPAddress address)
+        {
+            IEnumerable<NetworkInterface> nics = NetworkInterface.GetAllNetworkInterfaces().Where(nic => nic.OperationalStatus == OperationalStatus.Up);
+            foreach (NetworkInterface nic in nics)
+            {
+                if (nic.GetIPProperties().UnicastAddresses.Any(adr => adr.Address.Equals(address)))
+                    return nic.GetPhysicalAddress();
+            }
+            return null;
+        }
+
         public async Task SendAsync(ICMPPacket packet, IPAddress destination)
         {
             int len = packet.WritePacket(buffer.Span);
@@ -63,7 +75,9 @@ namespace ICMPv6DotNet.Net
             while (packet == null || (!includeInvalid && !packet.IsValid))
             {
                 var result = await socket.ReceiveMessageFromAsync(buffer, SocketFlags.None, ep, token);
-                packet = new ICMPPacket(buffer.Slice(0, result.ReceivedBytes).Span, ((IPEndPoint)result.RemoteEndPoint).Address, listenAll ? result.PacketInformation.Address : listenAddress);
+                packet = new ICMPPacket(buffer.Slice(0, result.ReceivedBytes).Span, ((IPEndPoint)result.RemoteEndPoint).Address, result.PacketInformation.Address);
+                if (packet == null || !packet.IsValid)
+                    Console.WriteLine("Invalid Packet");
             }
             return packet;
         }
@@ -77,9 +91,15 @@ namespace ICMPv6DotNet.Net
             while (packet == null || (!includeInvalid && !packet.IsValid))
             {
                 var len = socket.ReceiveMessageFrom(buffer.Span, ref none, ref ep, out IPPacketInformation info);
-                packet = new ICMPPacket(buffer.Slice(0, len).Span, ((IPEndPoint)ep).Address, listenAll ? info.Address : listenAddress);
+                packet = new ICMPPacket(buffer.Slice(0, len).Span, ((IPEndPoint)ep).Address,  info.Address);
             }
             return packet;
+        }
+
+        public void Close()
+        {
+            socket.Shutdown(SocketShutdown.Both);
+            socket.Close();
         }
 
         public IPAddress ListenAddress { get { return this.listenAddress; } }

@@ -2,9 +2,14 @@
 {
     public class NDPOptionRedirected : NDPOption
     {
-        public NDPOptionRedirected(Memory<byte> buffer, int start, int len)
+        public NDPOptionRedirected(Span<byte> buffer)
         {
-            RedirectedPacket = buffer.Slice(start + 8, len - 6).ToArray();
+            RedirectedPacket = buffer.Slice(8).ToArray();
+        }
+
+        public NDPOptionRedirected(byte[] packet)
+        {
+            RedirectedPacket = packet;
         }
 
         public override int WritePacket(Span<byte> buffer)

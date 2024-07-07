@@ -1,6 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Collections.ObjectModel;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Text;
 
 namespace ICMPv6DotNet.Payloads.NDP
@@ -17,7 +18,7 @@ namespace ICMPv6DotNet.Payloads.NDP
             switch (type)
             {
                 case ICMPType.RouterSolicitation:
-                    ParseOptions(4, buffer);
+                    ParseOptions(buffer.Slice(4).Span);
                     break;
                 case ICMPType.RouterAdvertisement:
                     if (buffer.Length < 12)
@@ -31,7 +32,7 @@ namespace ICMPv6DotNet.Payloads.NDP
                     RouterLifetime = BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(2).Span);
                     ReachableTime = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(4).Span);
                     RetransTime = BinaryPrimitives.ReadUInt32BigEndian(buffer.Slice(8).Span);
-                    ParseOptions(12, buffer);
+                    ParseOptions(buffer.Slice(12).Span);
                     break;
                 case ICMPType.NeighborSolicitation:
                 case ICMPType.NeighborAdvertisement:
@@ -47,7 +48,7 @@ namespace ICMPv6DotNet.Payloads.NDP
                         Solicited = (buffer.Span[0] & 0x40) == 0x40;
                         Override = (buffer.Span[0] & 0x20) == 0x20;
                     }
-                    ParseOptions(20, buffer);
+                    ParseOptions(buffer.Slice(20).Span);
                     break;
                 case ICMPType.RedirectMessage:
                     if (buffer.Length < 36)
@@ -57,9 +58,15 @@ namespace ICMPv6DotNet.Payloads.NDP
                     }
                     TargetAddress = new IPAddress(buffer.Slice(4, 16).Span);
                     DestinationAddress = new IPAddress(buffer.Slice(20, 16).Span);
-                    ParseOptions(36, buffer);
+                    ParseOptions(buffer.Slice(36).Span);
                     break;
             }
+        }
+
+        protected NDPPayload(ICMPType type, List<NDPOption> options)
+        {
+            this.type = type;
+            this.options = options;
         }
 
         public override int WritePacket(Span<byte> buffer)
@@ -68,6 +75,8 @@ namespace ICMPv6DotNet.Payloads.NDP
             {
                 case ICMPType.RouterSolicitation:
                     buffer.Slice(0, 4).Clear();
+                    if (4 >= buffer.Length)
+                        return 4;
                     return 4 + WriteOptions(buffer.Slice(4));
                 case ICMPType.RouterAdvertisement:
                     buffer[0] = CurrentHopLimit ?? 0;
@@ -78,7 +87,9 @@ namespace ICMPv6DotNet.Payloads.NDP
                     BinaryPrimitives.WriteUInt16BigEndian(buffer.Slice(2), RouterLifetime ?? 0);
                     BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(4), ReachableTime ?? 0);
                     BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(8), RetransTime ?? 0);
-                    return WriteOptions(buffer.Slice(12));
+                    if (12 >= buffer.Length)
+                        return 12;
+                    return 12 + WriteOptions(buffer.Slice(12));
                 case ICMPType.NeighborSolicitation:
                 case ICMPType.NeighborAdvertisement:
                     if (TargetAddress == null)
@@ -93,7 +104,9 @@ namespace ICMPv6DotNet.Payloads.NDP
                         if (Override == true)
                             buffer[0] |= 0x20;
                     }
-                    return WriteOptions(buffer.Slice(20));
+                    if (20 >= buffer.Length)
+                        return 20;
+                    return 20 + WriteOptions(buffer.Slice(20));
                 case ICMPType.RedirectMessage:
                     if (TargetAddress == null)
                         throw new ArgumentException("TargetAddress is not set");
@@ -101,57 +114,57 @@ namespace ICMPv6DotNet.Payloads.NDP
                     if (DestinationAddress == null)
                         throw new ArgumentException("DestinationAddress is not set");
                     DestinationAddress.TryWriteBytes(buffer.Slice(20, 16), out _);
-                    return WriteOptions(buffer.Slice(36));
+                    if (36 >= buffer.Length)
+                        return 36;
+                    return 36 + WriteOptions(buffer.Slice(36));
                 default:
                     throw new InvalidOperationException("Unknown Payload Type");
             }
         }
 
-        private void ParseOptions(int start, Memory<byte> buffer)
+        private void ParseOptions(Span<byte> buffer)
         {
-            //TODO - Rewrite this to use spans instead of start/len
-            if (start >= buffer.Length)
+            if (buffer.Length == 0)
                 return;
-            int len = buffer.Span[start + 1] * 8;
-            if (len == 0 || start + len > buffer.Length)
+            int len = buffer[1] * 8;
+            if (len == 0 || len > buffer.Length)
             {
                 valid = false;
                 return;
             }
             try
             {
-                switch ((NeighborDiscoveryOption)buffer.Span[start])
+                switch ((NeighborDiscoveryOption)buffer[0])
                 {
                     case NeighborDiscoveryOption.SourceLinklayerAddress:
                         lock (options)
-                            options.Add(new NDPOptionLinkLocal(buffer, start, len, true));
+                            options.Add(new NDPOptionLinkLocal(buffer.Slice(0, len), true));
                         break;
                     case NeighborDiscoveryOption.TargetLinkLayerAddress: //Destination LL Address
                         lock (options)
-                            options.Add(new NDPOptionLinkLocal(buffer, start, len, false));
+                            options.Add(new NDPOptionLinkLocal(buffer.Slice(0, len), false));
                         break;
                     case NeighborDiscoveryOption.PrefixInformation:
                         lock (options)
-                            options.Add(new NDPOptionPrefixInformation(buffer, start, len));
+                            options.Add(new NDPOptionPrefixInformation(buffer.Slice(0, len)));
                         break;
                     case NeighborDiscoveryOption.RedirectedHeader:
                         lock (options)
-                            options.Add(new NDPOptionRedirected(buffer, start, len));
+                            options.Add(new NDPOptionRedirected(buffer.Slice(0, len)));
                         break;
                     case NeighborDiscoveryOption.MTU:
                         lock (options)
-                            options.Add(new NDPOptionMTU(buffer, start));
+                            options.Add(new NDPOptionMTU(buffer.Slice(0, len)));
                         break;
                 }
-                start += len;
             }
             catch (InvalidDataException)
             {
                 valid = false;
                 return;
             }
-            if (start < buffer.Length)
-                ParseOptions(start, buffer);
+            if (len < buffer.Length)
+                ParseOptions(buffer.Slice(len));
         }
 
         private int WriteOptions(Span<byte> buffer)
@@ -220,6 +233,23 @@ namespace ICMPv6DotNet.Payloads.NDP
                 ret.Append($"[{options[i]}]");
             }
             return ret.ToString();
+        }
+
+        public static ICMPPacket CreateNeighborSolicitation(IPAddress source, IPAddress destination, IPAddress target, PhysicalAddress sourceMAC)
+        {
+            NDPPayload payload = new NDPPayload(ICMPType.NeighborSolicitation, [new NDPOptionLinkLocal(sourceMAC)]);
+            payload.TargetAddress = target;
+            return new ICMPPacket(source, destination, ICMPType.NeighborSolicitation, 0, payload);
+        }
+
+        public static ICMPPacket CreateNeighborAdvertisement(IPAddress source, IPAddress destination, PhysicalAddress sourceMAC, bool solicited = false, bool router = false, bool over = false)
+        {
+            NDPPayload payload = new NDPPayload(ICMPType.NeighborAdvertisement, [new NDPOptionLinkLocal(sourceMAC)]);
+            payload.TargetAddress = source;
+            payload.Solicited = solicited;
+            payload.Router = router;
+            payload.Override = over;
+            return new ICMPPacket(source, destination, ICMPType.NeighborAdvertisement, 0, payload);
         }
     }
 }
