@@ -19,6 +19,20 @@ namespace ICMPv6DotNet.Payloads.NDP
         TargetLinkLayerAddress = 2, //RFC 4861
         PrefixInformation = 3, //RFC 4861
         RedirectedHeader = 4, //RFC 4861
-        MTU = 5 //RFC 4861
+        MTU = 5, //RFC 4861
+        NBMAShortcutLimit = 6, //RFC 2491 TODO
+        AdvertisementInterval = 7, //RFC 6275 TODO
+        HomeAgentInformation = 8, //RFC 6275 TODO
+        SourceAddressList = 9, //RFC 3122
+        TargetAddressList = 10, //RFC 3122
+        //Skipped SEC Extensions
+        IPAddressPrefix = 17, //RFC 5568 TODO
+        NewRouterPrefixInformation = 18, //RFC 4068 TODO
+        LinkLayerAddress = 19, //RFC 5568 TODO
+        NeighborAdvertisementAcknowledgment = 20, //RFC 5568 TODO
+        RecursiveDNSServer = 25, //RFC 8106 TODO
+        DNSSearchList = 31, //RFC 8106 TODO
+        ProxySignature = 32, //RFC 6496 TODO
+        DHCPCaptivePortal = 37, //RFC 8910 TODO
     }
 }

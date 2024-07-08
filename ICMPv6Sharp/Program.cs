@@ -22,7 +22,8 @@ internal class Program
     private static async Task Main(string[] args)
     {
         IPAddress dest = IPAddress.Parse("fe80::7654:3210:fe75:4578");
-        await MLDExample();
+        PhysicalAddress phy = new PhysicalAddress([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]);
+        await INDExample(phy);
     }
 
     private static async Task MLDExample()
@@ -38,6 +39,20 @@ internal class Program
                 Console.WriteLine($"    Source: {source}");
         }
         md.Stop();
+        Console.WriteLine("Query Complete");
+        Console.ReadLine();
+    }
+
+    private static async Task INDExample(PhysicalAddress dest)
+    {
+        Console.WriteLine("Running...");
+        NeighborDiscovery nd = new NeighborDiscovery(0, true);
+        Console.WriteLine($"Querying network for IP Addresses of {dest}:");
+        CancellationTokenSource cts = new CancellationTokenSource(5000);
+        var lst = await nd.GetAddresses(dest, cts.Token);
+        foreach (var addr in lst)
+            Console.WriteLine("  Found " +  addr);
+        nd.Stop();
         Console.WriteLine("Query Complete");
         Console.ReadLine();
     }

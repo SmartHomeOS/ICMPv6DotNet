@@ -29,6 +29,8 @@ namespace ICMPv6DotNet.Payloads.NDP
             this.type = type;
             switch (type)
             {
+                case ICMPType.InverseNeighborDiscoveryAdvertisement:
+                case ICMPType.InverseNeighborDiscoverySolicitation:
                 case ICMPType.RouterSolicitation:
                     ParseOptions(buffer.Slice(4));
                     break;
@@ -85,6 +87,8 @@ namespace ICMPv6DotNet.Payloads.NDP
         {
             switch (type)
             {
+                case ICMPType.InverseNeighborDiscoverySolicitation:
+                case ICMPType.InverseNeighborDiscoveryAdvertisement:
                 case ICMPType.RouterSolicitation:
                     buffer.Slice(0, 4).Clear();
                     if (4 >= buffer.Length)
@@ -168,6 +172,11 @@ namespace ICMPv6DotNet.Payloads.NDP
                         lock (options)
                             options.Add(new NDPOptionMTU(buffer.Slice(0, len)));
                         break;
+                    case NeighborDiscoveryOption.SourceAddressList:
+                    case NeighborDiscoveryOption.TargetAddressList:
+                        lock (options)
+                            options.Add(new NDPOptionAddressList(buffer.Slice(0, len)));
+                        break;
                 }
             }
             catch (InvalidDataException)
@@ -183,7 +192,7 @@ namespace ICMPv6DotNet.Payloads.NDP
         {
             int len = 0;
             foreach(var option in options)
-                len += option.WritePacket(buffer);
+                len += option.WritePacket(buffer.Slice(len));
             return len;
         }
 
@@ -249,19 +258,26 @@ namespace ICMPv6DotNet.Payloads.NDP
 
         public static ICMPPacket CreateNeighborSolicitation(IPAddress source, IPAddress destination, IPAddress target, PhysicalAddress sourceMAC)
         {
-            NDPPayload payload = new NDPPayload(ICMPType.NeighborSolicitation, [new NDPOptionLinkLocal(sourceMAC)]);
+            NDPPayload payload = new NDPPayload(ICMPType.NeighborSolicitation, [new NDPOptionLinkLocal(sourceMAC, true)]);
             payload.TargetAddress = target;
             return new ICMPPacket(source, destination, ICMPType.NeighborSolicitation, 0, payload);
         }
 
         public static ICMPPacket CreateNeighborAdvertisement(IPAddress source, IPAddress destination, PhysicalAddress sourceMAC, bool solicited = false, bool router = false, bool over = false)
         {
-            NDPPayload payload = new NDPPayload(ICMPType.NeighborAdvertisement, [new NDPOptionLinkLocal(sourceMAC)]);
+            NDPPayload payload = new NDPPayload(ICMPType.NeighborAdvertisement, [new NDPOptionLinkLocal(sourceMAC, true)]);
             payload.TargetAddress = source;
             payload.Solicited = solicited;
             payload.Router = router;
             payload.Override = over;
             return new ICMPPacket(source, destination, ICMPType.NeighborAdvertisement, 0, payload);
+        }
+
+        internal static ICMPPacket CreateInverseNeighborSolicitation(IPAddress source, IPAddress destination, PhysicalAddress target, PhysicalAddress sourceMAC)
+        {
+            List<NDPOption> options = [new NDPOptionLinkLocal(target, false), new NDPOptionLinkLocal(sourceMAC, true), new NDPOptionAddressList([source], true)];
+            NDPPayload payload = new NDPPayload(ICMPType.InverseNeighborDiscoverySolicitation, options);
+            return new ICMPPacket(source, destination, ICMPType.InverseNeighborDiscoverySolicitation, 0, payload);
         }
     }
 }

@@ -13,6 +13,7 @@
 using ICMPv6DotNet.Payloads.NDP;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Threading;
 
 namespace ICMPv6DotNet.Net
 {
@@ -21,6 +22,7 @@ namespace ICMPv6DotNet.Net
         protected ICMPv6Socket socket;
 
         private static readonly IPAddress SOLICITED_NODE = IPAddress.Parse("FF02:0:0:0:0:1:FF00:0000");
+        private static readonly IPAddress ALL_NODES = IPAddress.Parse("FF02::1");
 
         public NeighborDiscovery(int nicIndex, bool linkLocal) : this(ICMPv6Socket.GetNicAddress(nicIndex, linkLocal)) { }
 
@@ -28,6 +30,46 @@ namespace ICMPv6DotNet.Net
         {
             //TODO - Promiscious mode required on windows, verify if this is needed on other platforms
             socket = new ICMPv6Socket(nicAddress, true);
+        }
+
+        public async Task<List<IPAddress>> GetAddresses(PhysicalAddress target, CancellationToken token = default)
+        {
+            PhysicalAddress? sourceMAC = ICMPv6Socket.GetNicPhysicalAddress(socket.ListenAddress);
+            if (sourceMAC == null)
+                return [];
+            ICMPPacket IND = NDPPayload.CreateInverseNeighborSolicitation(socket.ListenAddress, ALL_NODES, target, sourceMAC);
+            await socket.SendAsync(IND, ALL_NODES, token);
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    ICMPPacket packet = await socket.ReceiveAsync(false, token);
+                    if (packet.Type == ICMPType.InverseNeighborDiscoveryAdvertisement && (packet.Payload != null))
+                    {
+                        NDPPayload ndp = (NDPPayload)packet.Payload;
+                        bool valid = false;
+                        foreach (var option in ndp.Options)
+                        {
+                            if (option is NDPOptionLinkLocal ll)
+                            {
+                                if (ll.TargetAddress == target)
+                                { 
+                                    valid = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (valid)
+                        {
+                            foreach (var option in ndp.Options)
+                                if (option is NDPOptionAddressList al)
+                                    return al.Addresses;
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException) { }
+            return [];
         }
 
         public async Task<PhysicalAddress?> ResolveLinkAddress(IPAddress address, int timeout = 10000)
@@ -53,7 +95,7 @@ namespace ICMPv6DotNet.Net
                         foreach (var option in ((NDPPayload)packet.Payload).Options)
                         {
                             if (option is NDPOptionLinkLocal ll)
-                                return ll.DestinationAddress;
+                                return ll.TargetAddress;
                         }
                     }
                 }

@@ -21,13 +21,15 @@ namespace ICMPv6DotNet.Payloads.NDP
             if (source)
                 SourceAddress = new PhysicalAddress(buffer.Slice(2, buffer.Length - 2).ToArray());
             else
-                DestinationAddress = new PhysicalAddress(buffer.Slice(2, buffer.Length - 2).ToArray());
+                TargetAddress = new PhysicalAddress(buffer.Slice(2, buffer.Length - 2).ToArray());
         }
 
-        public NDPOptionLinkLocal(PhysicalAddress? source = null, PhysicalAddress? destination = null)
+        public NDPOptionLinkLocal(PhysicalAddress? address, bool source)
         {
-            this.SourceAddress = source;
-            this.DestinationAddress = destination;
+            if (source)
+                this.SourceAddress = address;
+            else
+                this.TargetAddress = address;
         }
 
         public override int WritePacket(Span<byte> buffer)
@@ -38,10 +40,10 @@ namespace ICMPv6DotNet.Payloads.NDP
                 buffer[0] = (byte)NeighborDiscoveryOption.SourceLinklayerAddress;
                 SourceAddress.GetAddressBytes().CopyTo(buffer.Slice(2, 6));
             }
-            else if (DestinationAddress != null)
+            else if (TargetAddress != null)
             {
                 buffer[0] = (byte)NeighborDiscoveryOption.TargetLinkLayerAddress;
-                DestinationAddress.GetAddressBytes().CopyTo(buffer.Slice(2, 6));
+                TargetAddress.GetAddressBytes().CopyTo(buffer.Slice(2, 6));
             }
             else
                 throw new InvalidDataException("Source and Target Address are not defined");
@@ -52,12 +54,12 @@ namespace ICMPv6DotNet.Payloads.NDP
         {
             if (SourceAddress != null)
                 return "Source: " + SourceAddress;
-            if (DestinationAddress != null)
-                return "Destination: " + DestinationAddress;
+            if (TargetAddress != null)
+                return "Target: " + TargetAddress;
             return string.Empty;
         }
 
         public PhysicalAddress? SourceAddress { get; private set; }
-        public PhysicalAddress? DestinationAddress { get; private set; }
+        public PhysicalAddress? TargetAddress { get; private set; }
     }
 }
